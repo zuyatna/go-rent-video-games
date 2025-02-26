@@ -5,8 +5,6 @@ import (
 	"rent-video-game/model"
 	"rent-video-game/repository"
 	"strings"
-
-	"github.com/google/uuid"
 )
 
 type LessorUsecase struct {
@@ -33,14 +31,14 @@ func (u *LessorUsecase) RegisterLessor(lessor *model.Lessors) (*model.Lessors, e
 	return u.lessorRepo.RegisterLessor(lessor)
 }
 
-func (u *LessorUsecase) GetLessorByID(lessorID int, userID uuid.UUID) (*model.Lessors, error) {
-	return u.lessorRepo.GetLessorByID(lessorID, userID)
+func (u *LessorUsecase) GetLessorByID(lessorID int) (*model.Lessors, error) {
+	return u.lessorRepo.GetLessorByID(lessorID)
 }
 
-func (u *LessorUsecase) UpdateLessor(lessorID int, userID uuid.UUID, lessor *model.Lessors) (*model.Lessors, error) {
-	return u.lessorRepo.UpdateLessor(lessorID, userID, lessor)
+func (u *LessorUsecase) UpdateLessor(lessorID int, lessor *model.Lessors) (*model.Lessors, error) {
+	return u.lessorRepo.UpdateLessor(lessorID, lessor)
 }
 
-func (u *LessorUsecase) DeleteLessor(lessorID int, userID uuid.UUID) (*model.Lessors, error) {
-	return u.lessorRepo.DeleteLessor(lessorID, userID)
+func (u *LessorUsecase) DeleteLessor(lessorID int) (*model.Lessors, error) {
+	return u.lessorRepo.DeleteLessor(lessorID)
 }

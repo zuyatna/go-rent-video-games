@@ -7,7 +7,6 @@ import (
 	"rent-video-game/usecase"
 	"rent-video-game/utils"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -29,23 +28,23 @@ func (u *LessorHandler) LessorRoutes(e *echo.Echo) {
 func (u *LessorHandler) RegisterLessor(c echo.Context) error {
 	var lessor *model.Lessors
 	if err := c.Bind(&lessor); err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	userID, err := UserToken(c)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	if lessor.UserID != uuid.Nil && lessor.UserID != userID {
-		return c.JSON(http.StatusForbidden, "forbidden access")
+	if lessor.UserID != userID {
+		return echo.NewHTTPError(http.StatusForbidden, "forbidden access")
 	}
 
 	lessor.UserID = userID
 
 	lessor, err = u.lessorUsecase.RegisterLessor(lessor)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	response := model.LessorRegisterResponse{
@@ -65,12 +64,16 @@ func (u *LessorHandler) GetLessorByID(c echo.Context) error {
 
 	userID, err := UserToken(c)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	lessor, err := u.lessorUsecase.GetLessorByID(id, userID)
+	lessor, err := u.lessorUsecase.GetLessorByID(id)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	if lessor.UserID != userID {
+		return echo.NewHTTPError(http.StatusForbidden, "forbidden access")
 	}
 
 	response := model.LessorRegisterResponse{
@@ -87,7 +90,7 @@ func (u *LessorHandler) GetLessorByID(c echo.Context) error {
 func (u *LessorHandler) UpdateLessor(c echo.Context) error {
 	var lessor *model.Lessors
 	if err := c.Bind(&lessor); err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	lessorID := c.Param("lessor_id")
@@ -95,18 +98,18 @@ func (u *LessorHandler) UpdateLessor(c echo.Context) error {
 
 	userID, err := UserToken(c)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	if lessor.UserID != uuid.Nil && lessor.UserID != userID {
-		return c.JSON(http.StatusForbidden, "forbidden access")
+	if lessor.UserID != userID {
+		return echo.NewHTTPError(http.StatusForbidden, "forbidden access")
 	}
 
 	lessor.UserID = userID
 
-	lessor, err = u.lessorUsecase.UpdateLessor(id, userID, lessor)
+	lessor, err = u.lessorUsecase.UpdateLessor(id, lessor)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	response := model.LessorRegisterResponse{
@@ -126,12 +129,16 @@ func (u *LessorHandler) DeleteLessor(c echo.Context) error {
 
 	userID, err := UserToken(c)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	lessor, err := u.lessorUsecase.DeleteLessor(id, userID)
+	lessor, err := u.lessorUsecase.DeleteLessor(id)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	if lessor.UserID != userID {
+		return echo.NewHTTPError(http.StatusForbidden, "forbidden access")
 	}
 
 	response := model.LessorRegisterResponse{

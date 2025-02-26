@@ -39,18 +39,18 @@ func (u *UserHandler) UserRoutes(e *echo.Echo) {
 func (u *UserHandler) RegisterUser(c echo.Context) error {
 	var user *model.Users
 	if err := c.Bind(&user); err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	user.Password = string(hashedPassword)
 
 	user, err = u.userUsecase.RegisterUser(user)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	response := model.RegisterResponse{
@@ -66,23 +66,23 @@ func (u *UserHandler) RegisterUser(c echo.Context) error {
 func (u *UserHandler) LoginUser(c echo.Context) error {
 	var loginReq *model.LoginRequest
 	if err := c.Bind(&loginReq); err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	user, err := u.userUsecase.GetUserByEmail(loginReq.Email)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid email")
 	}
 
 	if err := user.CompareHashAndPassword(loginReq.Password); err != nil {
 		if loginReq.Password != user.Password {
-			return c.JSON(http.StatusUnauthorized, "invalid password")
+			return echo.NewHTTPError(http.StatusUnauthorized, "invalid password")
 		}
 	}
 
 	token, err := utils.GenerateUserToken(user.UserID)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to generate token")
 	}
 
 	response := model.LoginResponse{
@@ -91,28 +91,6 @@ func (u *UserHandler) LoginUser(c echo.Context) error {
 	response.Data.Token = token
 
 	return c.JSON(http.StatusOK, response)
-}
-
-func UserToken(c echo.Context) (uuid.UUID, error) {
-	tokenString := c.Request().Header.Get(Authorization)
-	if tokenString == "" {
-		return uuid.Nil, echo.NewHTTPError(http.StatusUnauthorized, "token required")
-	}
-
-	tokenString = strings.TrimPrefix(tokenString, Bearer)
-
-	claims, err := utils.VerifyUserToken(tokenString)
-	if err != nil {
-		return uuid.Nil, echo.NewHTTPError(http.StatusUnauthorized, "invalid token")
-	}
-
-	userIDString := claims["user_id"].(string)
-	userID, err := uuid.Parse(userIDString)
-	if err != nil {
-		return uuid.Nil, echo.NewHTTPError(http.StatusUnauthorized, "invalid user id")
-	}
-
-	return userID, nil
 }
 
 func (u *UserHandler) TopupUser(c echo.Context) error {
@@ -188,4 +166,26 @@ func (u *UserHandler) TopupUser(c echo.Context) error {
 			"error": "Payment failed: " + string(pi.Status),
 		})
 	}
+}
+
+func UserToken(c echo.Context) (uuid.UUID, error) {
+	tokenString := c.Request().Header.Get(Authorization)
+	if tokenString == "" {
+		return uuid.Nil, echo.NewHTTPError(http.StatusUnauthorized, "token required")
+	}
+
+	tokenString = strings.TrimPrefix(tokenString, Bearer)
+
+	claims, err := utils.VerifyUserToken(tokenString)
+	if err != nil {
+		return uuid.Nil, echo.NewHTTPError(http.StatusUnauthorized, "invalid token")
+	}
+
+	userIDString := claims["user_id"].(string)
+	userID, err := uuid.Parse(userIDString)
+	if err != nil {
+		return uuid.Nil, echo.NewHTTPError(http.StatusUnauthorized, "invalid user id")
+	}
+
+	return userID, nil
 }

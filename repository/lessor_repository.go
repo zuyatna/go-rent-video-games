@@ -5,15 +5,14 @@ import (
 	"rent-video-game/model"
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type ILessorRepository interface {
 	RegisterLessor(lessor *model.Lessors) (*model.Lessors, error)
-	GetLessorByID(lessorID int, userID uuid.UUID) (*model.Lessors, error)
-	UpdateLessor(lessorID int, userID uuid.UUID, lessor *model.Lessors) (*model.Lessors, error)
-	DeleteLessor(lessorID int, userID uuid.UUID) (*model.Lessors, error)
+	GetLessorByID(lessorID int) (*model.Lessors, error)
+	UpdateLessor(lessorID int, lessor *model.Lessors) (*model.Lessors, error)
+	DeleteLessor(lessorID int) (*model.Lessors, error)
 }
 
 type LessorRepository struct {
@@ -39,19 +38,19 @@ func (r *LessorRepository) RegisterLessor(lessor *model.Lessors) (*model.Lessors
 	return lessor, nil
 }
 
-func (r *LessorRepository) GetLessorByID(lessorID int, userID uuid.UUID) (*model.Lessors, error) {
+func (r *LessorRepository) GetLessorByID(lessorID int) (*model.Lessors, error) {
 	var lessor model.Lessors
-	if err := r.db.Where("lessor_id = ? AND user_id = ? AND (deleted_at IS NULL OR deleted_at = ?)",
-		lessorID, userID, "0001-01-01 00:00:00").First(&lessor).Error; err != nil {
+	if err := r.db.Where("lessor_id = ? AND (deleted_at IS NULL OR deleted_at = ?)",
+		lessorID, "0001-01-01 00:00:00").First(&lessor).Error; err != nil {
 		return nil, err
 	}
 	return &lessor, nil
 }
 
-func (r *LessorRepository) UpdateLessor(lessorID int, userID uuid.UUID, lessor *model.Lessors) (*model.Lessors, error) {
+func (r *LessorRepository) UpdateLessor(lessorID int, lessor *model.Lessors) (*model.Lessors, error) {
 	var l model.Lessors
-	err := r.db.Where("lessor_id = ? AND user_id = ? AND (deleted_at IS NULL OR deleted_at = ?)",
-		lessorID, userID, "0001-01-01 00:00:00").First(&l).Error
+	err := r.db.Where("lessor_id = ? AND (deleted_at IS NULL OR deleted_at = ?)",
+		lessorID, "0001-01-01 00:00:00").First(&l).Error
 	if err != nil {
 		return &l, err
 	}
@@ -67,10 +66,10 @@ func (r *LessorRepository) UpdateLessor(lessorID int, userID uuid.UUID, lessor *
 	return &l, nil
 }
 
-func (r *LessorRepository) DeleteLessor(lessorID int, userID uuid.UUID) (*model.Lessors, error) {
+func (r *LessorRepository) DeleteLessor(lessorID int) (*model.Lessors, error) {
 	var lessor model.Lessors
-	if err := r.db.Where("lessor_id = ? AND user_id = ? AND (deleted_at IS NULL OR deleted_at = ?)",
-		lessorID, userID, "0001-01-01 00:00:00").First(&lessor).Error; err != nil {
+	if err := r.db.Where("lessor_id = ? AND (deleted_at IS NULL OR deleted_at = ?)",
+		lessorID, "0001-01-01 00:00:00").First(&lessor).Error; err != nil {
 		return nil, err
 	}
 
