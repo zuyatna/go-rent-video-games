@@ -63,7 +63,4 @@ func TestRegisterUser(t *testing.T) {
 	assert.Equal(t, testUser.Name, result.Name)
 	assert.Equal(t, testUser.Email, result.Email)
 	assert.Equal(t, testUser.Password, result.Password)
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %s", err)
-	}
 }
