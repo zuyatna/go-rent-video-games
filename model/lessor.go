@@ -18,12 +18,12 @@ type Lessors struct {
 	Users     Users          `json:"-" gorm:"foreignKey:UserID;references:UserID"`
 }
 
-type LessorRegisterRequest struct {
+type LessorRequest struct {
 	Name     string `json:"name" validate:"required"`
 	Location string `json:"location" validate:"required"`
 }
 
-type LessorRegisterResponse struct {
+type LessorResponse struct {
 	Message string `json:"message"`
 	Data    struct {
 		LessorID int    `json:"lessor_id"`

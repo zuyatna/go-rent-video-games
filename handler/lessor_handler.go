@@ -26,8 +26,8 @@ func (u *LessorHandler) LessorRoutes(e *echo.Echo) {
 }
 
 func (u *LessorHandler) RegisterLessor(c echo.Context) error {
-	var lessor *model.Lessors
-	if err := c.Bind(&lessor); err != nil {
+	var lessorReq *model.LessorRequest
+	if err := c.Bind(&lessorReq); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
@@ -36,8 +36,9 @@ func (u *LessorHandler) RegisterLessor(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	if lessor.UserID != userID {
-		return echo.NewHTTPError(http.StatusForbidden, "forbidden access")
+	lessor := &model.Lessors{
+		Name:     lessorReq.Name,
+		Location: lessorReq.Location,
 	}
 
 	lessor.UserID = userID
@@ -47,7 +48,7 @@ func (u *LessorHandler) RegisterLessor(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	response := model.LessorRegisterResponse{
+	response := model.LessorResponse{
 		Message: "success register lessor",
 	}
 
@@ -76,7 +77,7 @@ func (u *LessorHandler) GetLessorByID(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "forbidden access")
 	}
 
-	response := model.LessorRegisterResponse{
+	response := model.LessorResponse{
 		Message: "success get lessor by id",
 	}
 
@@ -88,8 +89,8 @@ func (u *LessorHandler) GetLessorByID(c echo.Context) error {
 }
 
 func (u *LessorHandler) UpdateLessor(c echo.Context) error {
-	var lessor *model.Lessors
-	if err := c.Bind(&lessor); err != nil {
+	var lessorReq *model.LessorRequest
+	if err := c.Bind(&lessorReq); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
@@ -99,6 +100,11 @@ func (u *LessorHandler) UpdateLessor(c echo.Context) error {
 	userID, err := UserToken(c)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	lessor := &model.Lessors{
+		Name:     lessorReq.Name,
+		Location: lessorReq.Location,
 	}
 
 	if lessor.UserID != userID {
@@ -112,7 +118,7 @@ func (u *LessorHandler) UpdateLessor(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	response := model.LessorRegisterResponse{
+	response := model.LessorResponse{
 		Message: "success update lessor",
 	}
 
@@ -141,7 +147,7 @@ func (u *LessorHandler) DeleteLessor(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "forbidden access")
 	}
 
-	response := model.LessorRegisterResponse{
+	response := model.LessorResponse{
 		Message: "success delete lessor",
 	}
 

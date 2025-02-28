@@ -11,7 +11,8 @@ type IUserRepository interface {
 	RegisterUser(user *model.Users) (*model.Users, error)
 	GetUserByID(userID uuid.UUID) (*model.Users, error)
 	GetUserByEmail(email string) (*model.Users, error)
-	UpdateUserAmount(userID uuid.UUID, amount int) (*model.Users, error)
+	TopupUser(userID uuid.UUID, user *model.Users) (*model.Users, error)
+	TransactionUser(userID uuid.UUID, user *model.Users) (*model.Users, error)
 }
 
 type UserRepository struct {
@@ -47,17 +48,30 @@ func (r *UserRepository) GetUserByEmail(email string) (*model.Users, error) {
 	return &user, nil
 }
 
-func (r *UserRepository) UpdateUserAmount(userID uuid.UUID, amount int) (*model.Users, error) {
-	var user model.Users
-	if err := r.db.Where("user_id = ?", userID).First(&user).Error; err != nil {
-		return nil, err
+func (r *UserRepository) TopupUser(userID uuid.UUID, user *model.Users) (*model.Users, error) {
+	var u model.Users
+	err := r.db.Where("user_id = ?", userID).First(&u).Error
+	if err != nil {
+		return &u, err
 	}
 
-	user.Amount = user.Amount + amount
-
-	if err := r.db.Save(&user).Error; err != nil {
+	u.Amount += user.Amount
+	if err := r.db.Save(&u).Error; err != nil {
 		return nil, err
 	}
+	return &u, nil
+}
 
-	return &user, nil
+func (r *UserRepository) TransactionUser(userID uuid.UUID, user *model.Users) (*model.Users, error) {
+	var u model.Users
+	err := r.db.Where("user_id = ?", userID).First(&u).Error
+	if err != nil {
+		return &u, err
+	}
+
+	u.Amount = user.Amount
+	if err := r.db.Save(&u).Error; err != nil {
+		return nil, err
+	}
+	return &u, nil
 }

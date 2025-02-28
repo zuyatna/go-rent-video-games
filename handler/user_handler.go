@@ -22,12 +22,35 @@ var (
 	Bearer        = "Bearer "
 )
 
-type UserHandler struct {
-	userUsecase *usecase.UserUsecase
+type IUserHandler interface {
+	UserRoutes(e *echo.Echo)
+	RegisterUser(c echo.Context) error
+	LoginUser(c echo.Context) error
+	TopupUser(c echo.Context) error
 }
 
-func NewUserHandler(userUsecase *usecase.UserUsecase) *UserHandler {
-	return &UserHandler{userUsecase: userUsecase}
+type UserHandler struct {
+	userUsecase         *usecase.UserUsecase
+	topupHistoryUsecase *usecase.TopupHistoryUsecase
+}
+
+type UserHandlerInterface struct {
+	userUsecase         usecase.IUserUsecase
+	topupHistoryUsecase usecase.ITopupHistoryUsecase
+}
+
+func NewUserHandler(userUsecase *usecase.UserUsecase, topupHistoryUsecase *usecase.TopupHistoryUsecase) *UserHandler {
+	return &UserHandler{
+		userUsecase:         userUsecase,
+		topupHistoryUsecase: topupHistoryUsecase,
+	}
+}
+
+func NewUserHandlerWithInterface(userUsecase usecase.IUserUsecase, topupHistoryUsecase usecase.ITopupHistoryUsecase) *UserHandlerInterface {
+	return &UserHandlerInterface{
+		userUsecase:         userUsecase,
+		topupHistoryUsecase: topupHistoryUsecase,
+	}
 }
 
 func (u *UserHandler) UserRoutes(e *echo.Echo) {
@@ -37,18 +60,69 @@ func (u *UserHandler) UserRoutes(e *echo.Echo) {
 }
 
 func (u *UserHandler) RegisterUser(c echo.Context) error {
-	var user *model.Users
-	if err := c.Bind(&user); err != nil {
+	var userRegister *model.RegisterRequest
+	if err := c.Bind(&userRegister); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userRegister.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
-	user.Password = string(hashedPassword)
+	userRegister.Password = string(hashedPassword) // save hashed password
+
+	user := &model.Users{
+		Name:     userRegister.Name,
+		Email:    userRegister.Email,
+		Password: userRegister.Password,
+		Address:  userRegister.Address,
+	}
+
+	_, err = u.userUsecase.GetUserByEmail(user.Email)
+	if err == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "user already exists")
+	}
 
 	user, err = u.userUsecase.RegisterUser(user)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	response := model.RegisterResponse{
+		Message: "success register user",
+	}
+	response.Data.UserID = user.UserID
+	response.Data.Email = user.Email
+	response.Data.Name = user.Name
+
+	return c.JSON(http.StatusOK, response)
+}
+
+func (ui *UserHandlerInterface) RegisterUserInterface(c echo.Context) error {
+	var userRegister *model.RegisterRequest
+	if err := c.Bind(&userRegister); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userRegister.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	userRegister.Password = string(hashedPassword) // save hashed password
+
+	user := &model.Users{
+		Name:     userRegister.Name,
+		Email:    userRegister.Email,
+		Password: userRegister.Password,
+		Address:  userRegister.Address,
+	}
+
+	_, err = ui.userUsecase.GetUserByEmail(user.Email)
+	if err == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "user already exists")
+	}
+
+	user, err = ui.userUsecase.RegisterUser(user)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
@@ -94,29 +168,31 @@ func (u *UserHandler) LoginUser(c echo.Context) error {
 }
 
 func (u *UserHandler) TopupUser(c echo.Context) error {
+	var topupReq model.TopupRequest
+
 	userID, err := UserToken(c)
 	if err != nil {
 		return err
 	}
 
-	var topupReq model.TopupRequest
-
 	if err := c.Bind(&topupReq); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request body: " + err.Error(),
+			"error": "invalid request body: " + err.Error(),
 		})
 	}
 
 	if topupReq.Amount <= 0 {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Amount must be greater than 0",
+			"error": "amount must be greater than 0",
 		})
 	}
 
+	// stripe payment
 	stripe.Key = os.Getenv("STRIPE_SECRET_KEY")
 
+	// create payment intent
 	params := &stripe.PaymentIntentParams{
-		Amount:             stripe.Int64(int64(topupReq.Amount * 100)),
+		Amount:             stripe.Int64(int64(topupReq.Amount * 100)), // convert to cents
 		Currency:           stripe.String("usd"),
 		PaymentMethod:      stripe.String("pm_card_visa"),
 		PaymentMethodTypes: []*string{stripe.String("card")},
@@ -127,32 +203,49 @@ func (u *UserHandler) TopupUser(c echo.Context) error {
 	pi, err := paymentintent.New(params)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Payment processing failed: " + err.Error(),
+			"error": "payment processing failed: " + err.Error(),
 		})
 	}
 
-	paymentID := pi.ID
+	paymentID := pi.ID // save payment id
 
 	if pi.Status == "succeeded" {
-		updatedUser, err := u.userUsecase.UpdateUserAmount(userID, topupReq.Amount)
+		user := &model.Users{
+			Amount: topupReq.Amount,
+		}
+
+		updatedUser, err := u.userUsecase.TopupUser(userID, user)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": "Failed to update user balance: " + err.Error(),
+				"error": "failed to update user balance: " + err.Error(),
 			})
 		}
 
-		user, err := u.userUsecase.GetUserByID(userID)
+		user, err = u.userUsecase.GetUserByID(userID)
 		if err == nil {
 			go func() {
 				err := utils.SendTopupNotification(user.Email, user.Name, topupReq.Amount, updatedUser.Amount, pi.ID)
 				if err != nil {
-					fmt.Printf("Failed to send topup notification: %v\n", err)
+					fmt.Printf("failed to send topup notification: %v\n", err)
 				}
 			}()
 		}
 
+		topupHistory := &model.TopupHistory{
+			UserID:    userID,
+			PaymentID: paymentID,
+			Amount:    topupReq.Amount,
+		}
+
+		_, err = u.topupHistoryUsecase.CreateTopupHistory(topupHistory)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "failed to create topup history: " + err.Error(),
+			})
+		}
+
 		response := model.TopupResponse{
-			Message: "Topup successful",
+			Message: "topup successful",
 		}
 
 		response.Data.UserID = updatedUser.UserID
@@ -163,7 +256,7 @@ func (u *UserHandler) TopupUser(c echo.Context) error {
 		return c.JSON(http.StatusOK, response)
 	} else {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Payment failed: " + string(pi.Status),
+			"error": "payment failed: " + string(pi.Status),
 		})
 	}
 }

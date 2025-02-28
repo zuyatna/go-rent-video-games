@@ -37,6 +37,13 @@ func main() {
 	// sceheme migration
 	db.AutoMigrate(
 		&model.Users{},
+		&model.Lessors{},
+		&model.Consoles{},
+		&model.TopupHistory{},
+		&model.Products{},
+		&model.Bookings{},
+		&model.Transactions{},
+		&model.Ratings{},
 	)
 	fmt.Println("database migrated")
 
@@ -46,14 +53,17 @@ func main() {
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!")
 	})
-	e.GET("/success", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Success!")
-	})
+
+	// topup history handler
+	topupHistoryRepo := repository.NewTopupHistoryRepository(db)
+	topupHistoryUsecase := usecase.NewTopupHistoryUsecase(topupHistoryRepo)
+	topupHistoryHandler := handler.NewTopupHistoryHandler(topupHistoryUsecase)
+	topupHistoryHandler.TopupHistoryRoutes(e)
 
 	// user handler
 	userRepo := repository.NewUserRepository(db)
 	userUsecase := usecase.NewUserUsecase(userRepo)
-	userHandler := handler.NewUserHandler(userUsecase)
+	userHandler := handler.NewUserHandler(userUsecase, topupHistoryUsecase)
 	userHandler.UserRoutes(e)
 
 	// lessor handler
@@ -61,6 +71,36 @@ func main() {
 	lessorUsecase := usecase.NewLessorUsecase(lessorRepo)
 	lessorHandler := handler.NewLessorHandler(lessorUsecase)
 	lessorHandler.LessorRoutes(e)
+
+	// console handler
+	consoleRepo := repository.NewConsoleRepository(db)
+	consoleUsecase := usecase.NewConsoleUsecase(consoleRepo)
+	consoleHandler := handler.NewConsoleHandler(consoleUsecase)
+	consoleHandler.ConsoleRoutes(e)
+
+	// rating handler
+	ratingRepo := repository.NewRatingRepository(db)
+	ratingUsecase := usecase.NewRatingUsecase(ratingRepo)
+	ratingHandler := handler.NewRatingHandler(ratingUsecase)
+	ratingHandler.RatingRoutes(e)
+
+	// product handler
+	productRepo := repository.NewProductRepository(db)
+	productUsecase := usecase.NewProductUsecase(productRepo)
+	productHandler := handler.NewProductHandler(productUsecase, lessorUsecase, ratingUsecase)
+	productHandler.ProductRoutes(e)
+
+	// booking handler
+	bookingRepo := repository.NewBookingRepository(db)
+	bookingUsecase := usecase.NewBookingUsecase(bookingRepo)
+	bookingHandler := handler.NewBookingHandler(bookingUsecase, userUsecase, productUsecase, lessorUsecase)
+	bookingHandler.BookingRoutes(e)
+
+	// transaction handler
+	transactionRepo := repository.NewTransactionRepository(db)
+	transactionUsecase := usecase.NewTransactionUsecase(transactionRepo)
+	transactionHandler := handler.NewTransactionHandler(transactionUsecase, bookingUsecase, userUsecase, lessorUsecase)
+	transactionHandler.TransactionRoutes(e)
 
 	// start server
 	port := os.Getenv("PORT")

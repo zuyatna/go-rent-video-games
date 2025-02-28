@@ -14,7 +14,7 @@ type Users struct {
 	Email     string         `json:"email" gorm:"type:varchar(255); not null; unique"`
 	Password  string         `json:"password" gorm:"type:varchar(255); not null"`
 	Address   string         `json:"address" gorm:"type:varchar(255); not null"`
-	Amount    int            `json:"amount" gorm:"type:int; not null"`
+	Amount    float64        `json:"amount" gorm:"type:decimal(10,2); not null; default: 0"`
 	CreatedAt time.Time      `json:"created_at" gorm:"type:timestamp; not null; autoCreateTime"`
 	UpdatedAt time.Time      `json:"updated_at" gorm:"type:timestamp; not null; autoUpdateTime"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"type:timestamp"`
@@ -53,15 +53,15 @@ type LoginResponse struct {
 }
 
 type TopupRequest struct {
-	Amount int `json:"amount" validate:"required,gt=0"`
+	Amount float64 `json:"amount" validate:"required"`
 }
 
 type TopupResponse struct {
 	Message string `json:"message"`
 	Data    struct {
 		UserID      uuid.UUID `json:"user_id"`
-		TopupAmount int       `json:"topup_amount"`
-		NewBalance  int       `json:"new_balance"`
+		TopupAmount float64   `json:"topup_amount"`
+		NewBalance  float64   `json:"new_balance"`
 		PaymentID   string    `json:"payment_id"`
 	} `json:"data"`
 }

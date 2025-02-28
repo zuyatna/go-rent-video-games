@@ -5,6 +5,7 @@ import (
 	"rent-video-game/model"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -13,6 +14,9 @@ type ILessorRepository interface {
 	GetLessorByID(lessorID int) (*model.Lessors, error)
 	UpdateLessor(lessorID int, lessor *model.Lessors) (*model.Lessors, error)
 	DeleteLessor(lessorID int) (*model.Lessors, error)
+
+	GetLessorByUserID(userID uuid.UUID) (*model.Lessors, error)
+	GetLessorByProductID(productID int) (*model.Lessors, error)
 }
 
 type LessorRepository struct {
@@ -62,7 +66,6 @@ func (r *LessorRepository) UpdateLessor(lessorID int, lessor *model.Lessors) (*m
 	if err != nil {
 		return &l, err
 	}
-
 	return &l, nil
 }
 
@@ -76,6 +79,25 @@ func (r *LessorRepository) DeleteLessor(lessorID int) (*model.Lessors, error) {
 	if err := r.db.Model(&lessor).Update("deleted_at", time.Now()).Error; err != nil {
 		return nil, err
 	}
+	return &lessor, nil
+}
 
+func (r *LessorRepository) GetLessorByUserID(userID uuid.UUID) (*model.Lessors, error) {
+	var lessor model.Lessors
+	if err := r.db.Where("user_id = ? AND (deleted_at IS NULL OR deleted_at = ?)",
+		userID, "0001-01-01 00:00:00").First(&lessor).Error; err != nil {
+		return nil, err
+	}
+	return &lessor, nil
+}
+
+func (r *LessorRepository) GetLessorByProductID(productID int) (*model.Lessors, error) {
+	var lessor model.Lessors
+	if err := r.db.Table("lessors").
+		Joins("JOIN products ON lessors.lessor_id = products.lessor_id").
+		Where("products.product_id = ? AND (lessors.deleted_at IS NULL OR lessors.deleted_at = ?)",
+			productID, "0001-01-01 00:00:00").First(&lessor).Error; err != nil {
+		return nil, err
+	}
 	return &lessor, nil
 }

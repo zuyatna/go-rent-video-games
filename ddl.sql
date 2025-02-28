@@ -4,10 +4,21 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     address VARCHAR(255) NOT NULL,
-    amount INT NOT NULL DEFAULT 0,
+    amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP
+);
+
+CREATE TABLE topup_histories (
+    topup_history_id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL,
+    payment_id VARCHAR(255) NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE lessors (
@@ -35,7 +46,7 @@ CREATE TABLE products (
     console_id INT NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    rental_cost_per_month INT NOT NULL,
+    rental_cost_per_month DECIMAL(10, 2) NOT NULL,
     stock_availability INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -78,7 +89,7 @@ CREATE TABLE transactions (
     booking_id INT NOT NULL,
     user_id UUID NOT NULL,
     lessor_id INT NOT NULL,
-    amount INT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP,
