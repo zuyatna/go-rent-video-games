@@ -67,17 +67,21 @@ func (u *BookingHandler) CreateBooking(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "lessors cannot book their own products")
 	}
 
-	booking, err = u.bookingUsecase.CreateBooking(booking)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	}
-
 	lessor, err := u.lessorUsecase.GetLessorByProductID(booking.ProductID)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	product, err := u.productUsecase.GetProductByID(booking.ProductID, lessor.LessorID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	if product.StockAvailability <= 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "product is out of stock")
+	}
+
+	booking, err = u.bookingUsecase.CreateBooking(booking)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}

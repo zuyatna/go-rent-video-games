@@ -28,7 +28,6 @@ func TestRegisterUser(t *testing.T) {
 
 	e := echo.New()
 
-	// Fix: Remove trailing comma in JSON
 	reqJSON := `{
         "name": "test",
         "email": "test@example.com",
